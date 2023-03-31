@@ -27,7 +27,7 @@ x, y = 20, 19900 # Параметры для записи в pdf
 plt.max_open_warning = True
 pdfmetrics.registerFont(TTFont('ArialUnicode', 'C:\Windows\Fonts\Arial.ttf'))
 pagesize = (letter[0], 20000)
-c = canvas.Canvas(f"report{12}.pdf", pagesize=pagesize)
+c = canvas.Canvas(f"report{3}.pdf", pagesize=pagesize)
 page_width, page_height = letter
 c.setFont('ArialUnicode', 12)
 out = StringIO()
@@ -42,10 +42,10 @@ f_3 = 2400 # Частота дискретизации
 # fi_1 = sympy.pi
 # fi_2 = sympy.pi
 
-print(f"Вариант: {12}")
+print(f"Вариант: {3}")
 
-fi_1 = 4 * sympy.pi / 4
-fi_2 = 1 * sympy.pi / 2
+fi_1 = 3 * sympy.pi / 4
+fi_2 = 0 * sympy.pi / 2
 
 LAST_FIGURE_NUMBER = 0
 
@@ -356,12 +356,12 @@ def task_5(dfp_data):
             theta = np.angle(complex(result))
             plt.polar([0, theta], [0, r],  marker='o')
             plt.text(theta, r, f"n = {m}")
-            print(f'result: {result}')
+            # print(f'result: {result}')
 
             real_part, imag_part = result.as_real_imag()
             sum_for_signal += (real_part + imag_part * j)
 
-            print(f"Принт:: {sum_for_signal}")
+            # print(f"Принт:: {sum_for_signal}")
             text_to_print.append(str(sympy.simplify(result)))
 
 
@@ -378,7 +378,7 @@ def task_5(dfp_data):
 
     print(f"Полученные итоговые данные: {list(map(lambda x: round(x, 2), getted_data))}")
 
-    print(f"Getted data: {getted_data}")
+    # print(f"Getted data: {getted_data}")
     plot_graphs_after_ODPF(getted_data)
 
 
