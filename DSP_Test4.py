@@ -21,6 +21,126 @@ n_i = t_i / T
 n_p = t_p / T
 n_0 = t_0 / T
 
+class ShiftRegister:
+    """ Описание класса сдвигового регистра."""
+    def  __init__(self, size):
+        self.size = size # Установка размера регистра
+        self.reg = np.zeros(size) # Хранилище регистра
+        self.output = self.reg[-1] # На выход всегда поступает последний элемент
+
+    def make_shift(self, add_value):
+        """Имитация сдвига регистра, ex: 0 1 0 (clk)--> 0 0 1"""
+        self.reg[1:] = self.reg[0:len(self.reg) - 1] # Сдвиг
+        self.reg[0] = add_value # Добавление в начало
+    def __str__(self):
+        return ".".join(self.reg)
+
+    # def __call__(self, *args, **kwargs):
+    #     return self.reg
+
+class Switch:
+    """ Описание класса свича."""
+    def __init__(self, update_frequency):
+        self.update_frequency = update_frequency # Частота обновления
+        self.input_1 = self.input_2 = self.output_1 = self.output_2 = 0
+        self.inverted_output = False
+        self.update_frequency = update_frequency
+        self.update_counter = 0
+
+    def set_input_values(self, value_1, value_2):
+        """Установка входных значений и получение выходных"""
+        self.input_1 = value_1
+        self.input_2 = value_2
+        if not self.inverted_output:
+            self.output_1 = self.input_1
+            self.output_2 = self.input_2
+        else:
+            self.output_1 = self.input_2
+            self.output_2 = self.input_1
+        self.update_counter += 1
+        if self.update_counter == self.update_frequency:
+            self.inverted_output = not self.inverted_output
+            self.update_counter = 0
+
+class BPFThreadAutomate:
+    """ Описывает автомат, работаюший по поточной реализации."""
+
+    E = np.exp(-1 * i * (np.pi / 4))
+    BUTTERFLY_1_M_VALUES = [E**0, E**1, E**2, E**3]
+    BUTTERFLY_2_M_VALUES = [E**0, E**2, E**0, E**2]
+    BUTTERFLY_3_M_VALUES = [E**0, E**0, E**0, E**0]
+    MAX_CODE_LENGHT = 8
+    MAX_BUTTERFLY_MULTIPLUER = 4
+
+    def __init__(self, signal_data):
+        self.signal_data = signal_data # Входные данные
+        self.reg_0 = ShiftRegister(4)  # Регистр на входе
+        self.reg_1 = ShiftRegister(2)  # Регистр снизу после первой бабочки
+        self.reg_2 = ShiftRegister(2)  # Регистр сверху после свича и первой бабочки
+        self.reg_3 = ShiftRegister(1)  # Регистр снизу после второй бабочки
+        self.reg_4 = ShiftRegister(1)  # Регистр сверху после свича и второй бабочки
+        self.SW1 = Switch(2) # Первый свитч
+        self.SW2 = Switch(1) # Второй свитч
+        self.current_butterfly_multiplier_index = 0 # Множитель бабочки
+        self.n = 0 # Регулятор ключа
+        self.bpf_output_1 = 0 # Первый выход из автомата
+        self.bpf_output_2 = 0 # Второй выход из автомата
+
+    def __str__(self):
+        return ", ".join(self.__dict__)
+
+    def check_n(self):
+        if self.n == self.MAX_CODE_LENGHT:
+            self.n = 0
+
+    def check_current_butterfly_index(self):
+        if self.current_butterfly_multiplier_index == self.MAX_BUTTERFLY_MULTIPLUER:
+            self.current_butterfly_multiplier_index = 0
+
+
+    def update(self):
+        """ Обновление состояния автомата. Здесь же происходит нативная связка всех
+            элементов автомата друг с другом."""
+
+        # Множители для бабочки
+        current_butterfly_1_mul = self.BUTTERFLY_1_M_VALUES[self.current_butterfly_multiplier_index]
+        current_butterfly_2_mul = self.BUTTERFLY_1_M_VALUES[self.current_butterfly_multiplier_index]
+        current_butterfly_3_mul = self.BUTTERFLY_1_M_VALUES[self.current_butterfly_multiplier_index]
+        self.current_butterfly_multiplier_index += 1
+        self.check_current_butterfly_index()
+
+        # Логика того, что подается на вход автомата
+        if self.n <= 3:
+            # Ключ замкнут на регистр
+            self.reg_0.make_shift(self.signal_data[self.n])
+            self.n += 1
+        else:
+            # Ключ замкнут на вторую линию
+            self.reg_0.make_shift(0)
+        self.check_n()
+
+        # Обновление состояния нулевого регистра
+        self.reg_1.make_shift((self.reg_0.reg[-1] - self.signal_data(self.n)) * current_butterfly_1_mul)
+
+        # Обновление состояния первого свича:
+        self.SW1.set_input_values(self.reg_1.reg[-1], self.signal_data(self.n) - self.reg_0.reg[-1])
+
+        # Обновление состояния второго регистра:
+        self.reg_2.make_shift(self.SW1.output_1)
+
+        # Обновление состояния третьего регистра:
+        self.reg_3.make_shift((self.reg_2.reg[-1] - self.SW1.output_2) * current_butterfly_2_mul)
+
+        # Обновление состояния второго свича:
+        self.SW2.set_input_values(self.reg_3.reg[-1], self.SW1.output_2 + self.reg_2.reg[-1])
+
+        # Обновление пятого регистра:
+        self.reg_4.make_shift(self.SW2.output_2)
+
+        # TODO: запустить поточную реализацию
+
+
+
 # Построение фигуры
 def make_figure() -> plt.figure:
     """Возвращает объект для нового графика."""
@@ -97,7 +217,6 @@ def butterfly_left(seq):
 
     return stage_3_rounded
 
-
 def calculate_butterfly_section_right(base_column: list, new_column: list,
                                       section_start: int, size: int, e_values:list, cntr):
     """ Расчет секции для бабочки фурье при прореживании справа."""
@@ -106,7 +225,6 @@ def calculate_butterfly_section_right(base_column: list, new_column: list,
         new_column[i] = base_column[i] + base_column[i + size]
         new_column[i + size] = (base_column[i] - base_column[i + size])*e_values[e_counter]
         e_counter += 1
-
 def calculate_butterfly_section_left(base_column: list, new_column: list,
                                       section_start: int, size: int, e_values:list, cntr):
     """ Расчет секции для бабочки фурье при прореживании слева."""
@@ -116,6 +234,13 @@ def calculate_butterfly_section_left(base_column: list, new_column: list,
         new_column[i] = (base_column[i] + base_column[i + size] *  e_values[e_counter])
         new_column[i + size] = base_column[i] - base_column[i + size] *  e_values[e_counter]
         e_counter += 1
+
+def threads_bpf_realisation(signal_discretes):
+    """Поточный метод расчета БПФ."""
+    print(f"Входные данные поточной реализации: {signal_discretes}")
+    automate = BPFThreadAutomate() # Создаем автомат для работы
+    print(automate)
+
 
 
 if __name__ == '__main__':
@@ -132,69 +257,71 @@ if __name__ == '__main__':
             Re, Im = value.as_real_imag()
             data.append(complex(round(Re, 3), round(Im, 3)))
 
-    bpf_result_no_ordered = butterfly_right(data)
-    order = [0, 4, 2, 6, 1, 5, 3, 7]
-    bpf_result = []
-    print(f"Неотсортированные данные: {bpf_result_no_ordered}")
-    for order_index in order:
-        bpf_result.append(bpf_result_no_ordered[order_index])
-    print(f"Упорядоченные данные: {bpf_result}")
+    # bpf_result_no_ordered = butterfly_right(data)
+    # order = [0, 4, 2, 6, 1, 5, 3, 7]
+    # bpf_result = []
+    # print(f"Неотсортированные данные: {bpf_result_no_ordered}")
+    # for order_index in order:
+    #     bpf_result.append(bpf_result_no_ordered[order_index])
+    # print(f"Упорядоченные данные: {bpf_result}")
+    #
+    # re_values = []
+    # im_values = []
+    # amps = []
+    #
+    # for value in bpf_result:
+    #     re_values.append(value.real)
+    #     im_values.append(value.imag)
+    #     amps.append(np.sqrt(value.real**2 + value.imag**2))
+    # phases = np.angle(list(map(complex, bpf_result)))
+    #
+    # print(f"Re values: {re_values}")
+    # print(f"Im values: {im_values}")
+    # print(f"Amps: {list(map(lambda x: round(x, 2), amps))}")
+    # print(f"Phases: {phases}")
+    # fig = make_figure()
+    # plt.plot(np.arange(0, 8), re_values)
+    # plt.title("Re part of signal")
+    #
+    # fig1 = make_figure()
+    # plt.plot(np.arange(0, 8), im_values)
+    # plt.title("Im part of signal")
+    #
+    # fig2 = make_figure()
+    # for i in range(8):
+    #     plt.vlines(i, 0, amps[i], colors='r')
+    #
+    # fig3 = make_figure()
+    # for i in range(8):
+    #     plt.vlines(i, 0, phases[i], colors='r')
+    # plt.yticks(np.arange(-1 * np.pi, 2 * np.pi, np.pi), [str(i) + "π" for i in range(-1, 2)])
+    #
+    # print(bpf_result_no_ordered)
+    # obpf_result = butterfly_left(bpf_result_no_ordered)
+    #
+    # re_values.clear()
+    # im_values.clear()
+    # for value in obpf_result:
+    #     re_values.append(value.real)
+    #     im_values.append(value.imag)
+    #
+    # print(f"Re values: {re_values}")
+    # print(f"Im values: {im_values}")
+    #
+    # fig4 = make_figure()
+    # for i in range(8):
+    #     plt.vlines(i, 0, re_values[i], colors='r')
+    # plt.title("Re values after OBPF")
+    #
+    # fig5 = make_figure()
+    # for i in range(8):
+    #     plt.vlines(i, 0, im_values[i], colors='r')
+    # plt.title("Im values after OBPF")
+    #
+    # Расчет при помощи поточной реализации
+    threads_bpf_realisation(data)
 
-    re_values = []
-    im_values = []
-    amps = []
 
-    for value in bpf_result:
-        re_values.append(value.real)
-        im_values.append(value.imag)
-        amps.append(np.sqrt(value.real**2 + value.imag**2))
-    phases = np.angle(list(map(complex, bpf_result)))
-
-    print(f"Re values: {re_values}")
-    print(f"Im values: {im_values}")
-    print(f"Amps: {list(map(lambda x: round(x, 2), amps))}")
-    print(f"Phases: {phases}")
-    fig = make_figure()
-    plt.plot(np.arange(0, 8), re_values)
-    plt.title("Re part of signal")
-
-    fig1 = make_figure()
-    plt.plot(np.arange(0, 8), im_values)
-    plt.title("Im part of signal")
-
-    fig2 = make_figure()
-    for i in range(8):
-        plt.vlines(i, 0, amps[i], colors='r')
-
-    fig3 = make_figure()
-    for i in range(8):
-        plt.vlines(i, 0, phases[i], colors='r')
-    plt.yticks(np.arange(-1 * np.pi, 2 * np.pi, np.pi), [str(i) + "π" for i in range(-1, 2)])
-
-    print(bpf_result_no_ordered)
-    obpf_result = butterfly_left(bpf_result_no_ordered)
-
-    re_values.clear()
-    im_values.clear()
-    for value in obpf_result:
-        re_values.append(value.real)
-        im_values.append(value.imag)
-
-    print(f"Re values: {re_values}")
-    print(f"Im values: {im_values}")
-
-    fig4 = make_figure()
-    for i in range(8):
-        plt.vlines(i, 0, re_values[i], colors='r')
-    plt.title("Re values after OBPF")
-
-    fig5 = make_figure()
-    for i in range(8):
-        plt.vlines(i, 0, im_values[i], colors='r')
-    plt.title("Im values after OBPF")
-
-    plt.show()
-
-
+    # plt.show()
 
 
