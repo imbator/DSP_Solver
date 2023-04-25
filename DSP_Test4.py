@@ -120,21 +120,26 @@ class BPFThreadAutomate:
             self.bpf_input_2 = 0
         elif 3 < self.n <= 7:
             self.bpf_input_1 = 0
-            self.bpf_input_1 = self.signal_data[self.n]
+            self.bpf_input_2 = self.signal_data[self.n]
         else:
             self.bpf_input_1 = 0
             self.bpf_input_2 = 0
 
+        # Обновление состояния первого регистра
+        last_reg_0_value = self.reg_0.reg[-1]
+        last_reg_1_value = self.reg_1.reg[-1]
+        last_reg_2_value = self.reg_2.reg[-1]
+        last_reg_3_value = self.reg_3.reg[-1]
+        last_reg_4_value = self.reg_4.reg[-1]
+
         # Обновлeние состояния нулевого регистра:
         self.reg_0.make_shift(self.bpf_input_1)
 
-        # Обновление состояния первого регистра
-        self.reg_1.make_shift((self.reg_0.reg[-1] - self.bpf_input_2) * current_butterfly_1_mul)
+        # Обновление состояния 1 регистра
+        self.reg_1.make_shift((last_reg_0_value - self.bpf_input_2) * current_butterfly_1_mul)
 
         # Обновление состояния первого свича:
-        # TODO: переделать! (тут должна быть бабочка)
-        print(f"To set SW1 values: { self.reg_0.reg[-1]}")
-        self.SW1.set_input_values(self.bpf_input_2 + self.reg_0.reg[-1], self.reg_1.reg[-1])
+        self.SW1.set_input_values(self.bpf_input_2 + last_reg_0_value, last_reg_1_value)
 
         #Увеличиваем счетчик
         self.n += 1
@@ -143,18 +148,18 @@ class BPFThreadAutomate:
         self.reg_2.make_shift(self.SW1.output_1)
 
         # Обновление состояния третьего регистра:
-        self.reg_3.make_shift((self.reg_2.reg[-1] - self.SW1.output_2) * current_butterfly_2_mul)
+        self.reg_3.make_shift((last_reg_2_value - self.SW1.output_2) * current_butterfly_2_mul)
 
         # Обновление состояния второго свича:
-        # TODO: переделать! (тут тоже должна быть бабочка lol)
-        self.SW2.set_input_values(self.SW1.output_2 + self.reg_2.reg[-1], self.reg_3.reg[-1])
+        self.SW2.set_input_values(self.SW1.output_2 + last_reg_2_value, last_reg_3_value)
 
         # Обновление пятого регистра:
         self.reg_4.make_shift(self.SW2.output_1)
 
         # Значения на выходе автомата:
-        self.bpf_output_1 = self.reg_4.reg[-1] + self.SW2.output_2
-        self.bpf_output_2 = (self.reg_4.reg[-1] - self.SW2.output_2) * current_butterfly_3_mul
+        self.bpf_output_1 = last_reg_4_value + self.SW2.output_2
+        self.bpf_output_2 = (last_reg_4_value - self.SW2.output_2) * current_butterfly_3_mul
+
 
 def threads_bpf_realisation(signal_discretes) -> list:
     """Поточный метод расчета БПФ."""
@@ -162,7 +167,7 @@ def threads_bpf_realisation(signal_discretes) -> list:
     print(f"Входные данные поточной реализации: {signal_discretes}")
     automate = BPFThreadAutomate(signal_discretes) # Создаем автомат для работы
     clk_cycles = 0
-    while clk_cycles != 6:
+    while clk_cycles != 12:
         automate.update()
         print(f"Automate updated. Current cycle: {clk_cycles}")
 
@@ -187,9 +192,7 @@ def threads_bpf_realisation(signal_discretes) -> list:
         clk_cycles += 1
         time.sleep(0.1)
 
-
     return result
-
 
 # Построение фигуры
 def make_figure() -> plt.figure:
@@ -298,68 +301,6 @@ if __name__ == '__main__':
             Re, Im = value.as_real_imag()
             data.append(complex(round(Re, 3), round(Im, 3)))
 
-    # bpf_result_no_ordered = butterfly_right(data)
-    # order = [0, 4, 2, 6, 1, 5, 3, 7]
-    # bpf_result = []
-    # print(f"Неотсортированные данные: {bpf_result_no_ordered}")
-    # for order_index in order:
-    #     bpf_result.append(bpf_result_no_ordered[order_index])
-    # print(f"Упорядоченные данные: {bpf_result}")
-    #
-    # re_values = []
-    # im_values = []
-    # amps = []
-    #
-    # for value in bpf_result:
-    #     re_values.append(value.real)
-    #     im_values.append(value.imag)
-    #     amps.append(np.sqrt(value.real**2 + value.imag**2))
-    # phases = np.angle(list(map(complex, bpf_result)))
-    #
-    # print(f"Re values: {re_values}")
-    # print(f"Im values: {im_values}")
-    # print(f"Amps: {list(map(lambda x: round(x, 2), amps))}")
-    # print(f"Phases: {phases}")
-    # fig = make_figure()
-    # plt.plot(np.arange(0, 8), re_values)
-    # plt.title("Re part of signal")
-    #
-    # fig1 = make_figure()
-    # plt.plot(np.arange(0, 8), im_values)
-    # plt.title("Im part of signal")
-    #
-    # fig2 = make_figure()
-    # for i in range(8):
-    #     plt.vlines(i, 0, amps[i], colors='r')
-    #
-    # fig3 = make_figure()
-    # for i in range(8):
-    #     plt.vlines(i, 0, phases[i], colors='r')
-    # plt.yticks(np.arange(-1 * np.pi, 2 * np.pi, np.pi), [str(i) + "π" for i in range(-1, 2)])
-    #
-    # print(bpf_result_no_ordered)
-    # obpf_result = butterfly_left(bpf_result_no_ordered)
-    #
-    # re_values.clear()
-    # im_values.clear()
-    # for value in obpf_result:
-    #     re_values.append(value.real)
-    #     im_values.append(value.imag)
-    #
-    # print(f"Re values: {re_values}")
-    # print(f"Im values: {im_values}")
-    #
-    # fig4 = make_figure()
-    # for i in range(8):
-    #     plt.vlines(i, 0, re_values[i], colors='r')
-    # plt.title("Re values after OBPF")
-    #
-    # fig5 = make_figure()
-    # for i in range(8):
-    #     plt.vlines(i, 0, im_values[i], colors='r')
-    # plt.title("Im values after OBPF")
-    #
-    # Расчет при помощи поточной реализации
     threads_bpf_realisation(data)
 
 
