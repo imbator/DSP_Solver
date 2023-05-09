@@ -3,6 +3,7 @@ import sympy
 import matplotlib.pyplot as plt
 from dsp_tools import  make_figure, butterfly_left, butterfly_right
 # Test 6 solution generator.
+# Telegram: @imbator
 # Version from 09.05.23.
 
 # Данные по варианту:
@@ -17,10 +18,7 @@ x_axis_range = np.arange(0, 8)
 filter_obpf_order = [0, 4, 2, 6, 1, 5, 3, 7]
 plt.rcParams['axes.prop_cycle'] = plt.cycler(color=['blue'])
 
-
-
-# TODO: возможный апдейт - добавить режекторный фильтр
-
+# Filter selection
 filter_type = {'FN': [1, 1, 1, 1, 0, 1, 1, 1, 0],
                'FV': [0, 0, 1 ,1 ,1 ,1 ,1 ,0, 0],
                'FP': [0, 1, 1 ,1, 0, 1, 1, 1, 0],
