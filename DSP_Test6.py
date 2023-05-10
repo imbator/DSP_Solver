@@ -9,7 +9,7 @@ from dsp_tools import  make_figure, butterfly_left, butterfly_right
 # Данные по варианту:
 N = 8
 dF_T = 0.43
-filter_selection = 'FP'
+filter_selection = '100'
 
 # Служебные переменные
 I = complex(0, 1)
@@ -19,10 +19,15 @@ filter_obpf_order = [0, 4, 2, 6, 1, 5, 3, 7]
 plt.rcParams['axes.prop_cycle'] = plt.cycler(color=['blue'])
 
 # Filter selection
-filter_type = {'FN': [1, 1, 1, 1, 0, 1, 1, 1, 0],
-               'FV': [0, 0, 1 ,1 ,1 ,1 ,1 ,0, 0],
-               'FP': [0, 1, 1 ,1, 0, 1, 1, 1, 0],
-               'FR': [1, 1, 1, 0, 1, 0, 1 ,1 ,0]}
+#                      0, 1, 2, 3, 4, 5, 6, 7, 8
+filter_type = {'000': [1, 1, 1, 0, 0, 0, 1, 1, 0],
+               '001': [1, 1, 1 ,1 ,0 ,1 ,1 ,1, 0],
+               '010': [0, 0, 0 ,1, 1, 1, 0, 0, 0],
+               '011': [0, 0, 1, 1, 1, 1, 1 ,0 ,0],
+               '100': [0, 1, 1, 0, 0, 0, 1, 1, 0],
+               '101': [0, 1, 1, 1, 0, 1 ,1 ,1 ,0],
+               '110': [1, 1, 0, 1, 1, 1, 0, 1, 0],
+               '111': [1, 1, 1, 0, 1, 0 ,1 ,1, 0]}
 
 def order_filter(filter_values) -> list:
     filter_values_ordered = []
