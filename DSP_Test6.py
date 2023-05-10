@@ -9,7 +9,7 @@ from dsp_tools import  make_figure, butterfly_left, butterfly_right
 # Данные по варианту:
 N = 8
 dF_T = 0.43
-filter_selection = '100'
+filter_selection = [0, 1, 1, 1, 0, -1 ,-1 ,-1, 0]
 
 # Служебные переменные
 I = complex(0, 1)
@@ -17,17 +17,6 @@ pi = np.pi
 x_axis_range = np.arange(0, 8)
 filter_obpf_order = [0, 4, 2, 6, 1, 5, 3, 7]
 plt.rcParams['axes.prop_cycle'] = plt.cycler(color=['blue'])
-
-# Filter selection
-#                      0, 1, 2, 3, 4, 5, 6, 7, 8
-filter_type = {'000': [1, 1, 1, 0, 0, 0, 1, 1, 0],
-               '001': [1, 1, 1 ,1 ,0 ,1 ,1 ,1, 0],
-               '010': [0, 0, 0 ,1, 1, 1, 0, 0, 0],
-               '011': [0, 0, 1, 1, 1, 1, 1 ,0 ,0],
-               '100': [0, 1, 1, 0, 0, 0, 1, 1, 0],
-               '101': [0, 1, 1, 1, 0, 1 ,1 ,1 ,0],
-               '110': [1, 1, 0, 1, 1, 1, 0, 1, 0],
-               '111': [1, 1, 1, 0, 1, 0 ,1 ,1, 0]}
 
 def order_filter(filter_values) -> list:
     filter_values_ordered = []
@@ -43,6 +32,7 @@ def amplitude_phase_characteristic_approximate(filter_sel) -> None:
     print("Задание 1. Аппроксимация амплитудно-частотной характеристики.")
     make_figure()
     plt.plot()
+    print(filter_selection)
     for i in range(len(x_axis_range)):
         plt.vlines(x_axis_range[i], 0, filter_sel[i])
     plt.title(f"{filter_selection} Re характеристика")
@@ -213,9 +203,8 @@ def check_all() -> None:
 
 
 if __name__ == "__main__":
-    filter_mask = filter_type[filter_selection]
-    amplitude_phase_characteristic_approximate(filter_mask) # Task 1
-    obpf_filter_result_values = filter_obpf_calculate(filter_mask) # Task 2
+    amplitude_phase_characteristic_approximate(filter_selection) # Task 1
+    obpf_filter_result_values = filter_obpf_calculate(filter_selection) # Task 2
     calculate_n_f(obpf_filter_result_values) # Task 3
     cycled_filter = time_cycle_shift(obpf_filter_result_values) # Task 4
     hemming_window_converion(cycled_filter ) # Task 5
